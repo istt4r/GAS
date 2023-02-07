@@ -98,39 +98,37 @@ function sortImports() {
       console.log("position_array: ", position_array);
     });
     return position_array;
-}
+  }
 
-// This function will rearrange the elements of each inner array of the block array according to the position_array
-function rearrangeBlockArray(block, position_array) {
-  function rearrangeContentArray(positional_array, content_array) {
-    var clean_array = [];
-    for (var i = 0; i < content_array.length; i++) {
-      var position = positional_array[i];
-      clean_array[position] = content_array[i];
+  // This function will rearrange the elements of each inner array of the block array according to the position_array
+  function rearrangeBlockArray(block, position_array) {
+    function rearrangeContentArray(positional_array, content_array) {
+      var clean_array = [];
+      for (var i = 0; i < content_array.length; i++) {
+        var position = positional_array[i];
+        clean_array[position] = content_array[i];
+      }
+        return clean_array;
     }
-      return clean_array;
+    var clean_block = [];
+    for (var i = 0; i < block.length; i++) {
+      var header = block[i];
+      var clean_array = rearrangeContentArray(position_array, header);
+      clean_block.push(clean_array);
+    }
+    return clean_block;
   }
-  var clean_block = [];
-  for (var i = 0; i < block.length; i++) {
-    var header = block[i];
-    var clean_array = rearrangeContentArray(position_array, header);
-    clean_block.push(clean_array);
+
+  var rearranged_block = rearrangeBlockArray(block, position_array);
+  console.log("Rearranged block: ", rearranged_block);
+
+  // Writing the results to sheet3 for debugging purposes
+  var spreadsheet = SpreadsheetApp.getActive();
+  var sheet = spreadsheet.getSheetByName("Sheet3");
+  for (var i = 0; i < rearranged_block.length; i++) {
+    var row = rearranged_block[i];
+    sheet.getRange(2, 1, 1, row.length).setValues([row]);
   }
-  return clean_block;
-}
-
-var rearranged_block = rearrangeBlockArray(block, position_array);
-console.log("Rearranged block: ", rearranged_block);
-
-// Writing the results to sheet3 for debugging purposes
-var spreadsheet = SpreadsheetApp.getActive();
-var sheet = spreadsheet.getSheetByName("Sheet3");
-for (var i = 0; i < rearranged_block.length; i++) {
-  var row = rearranged_block[i];
-  sheet.getRange(2, 1, 1, row.length).setValues([row]);
-}
-
-
 }
 
 
