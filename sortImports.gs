@@ -1,5 +1,3 @@
-import 'google-apps-script'
-
 // Get the Google Sheet
 var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet2");
 
@@ -31,10 +29,29 @@ var dictionary = {
 };
 
 var sheet_row = 1;
+var end_row;
 
-while (sheet_row < data.length) {
-  sheet_row = sortImports(data, dictionary, sheet_row);
+while (end_row > 0 ) {
+  [sheet_row,end_row] = sortImports(data, dictionary, sheet_row);
 }
+
+function removeHeaders() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet3");
+  var data = sheet.getDataRange().getValues();
+  var numDeleted = 0;
+  // Remove headers
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].trim() == "Exercise") {
+      sheet.deleteRow(i + 1 - numDeleted);
+      numDeleted++;
+      console.log("data[i][0]: ",data[i][0]);
+      console.log("Deleted row: ", i + 1);
+    }
+  }
+}
+
+removeHeaders();
+
 
 function sortImports(data,dictionary,sheet_row) {
 
@@ -128,15 +145,14 @@ function sortImports(data,dictionary,sheet_row) {
   var num_rows = (end_row-header_row); // 9
   var dict_length = Object.keys(dictionary).length; 
   console.log("num_rows: ",num_rows);
-  console.log("dict_length: ",dict_length);
-
-  // Writing the results to sheet3 for debugging purposes
-  // TODO - Fix hardcoding of writing. 
+ 
   var spreadsheet = SpreadsheetApp.getActive();
   var sheet = spreadsheet.getSheetByName("Sheet3");
   sheet.getRange(header_row+1, 1, num_rows, 19).setValues(rearranged_block);
 
-  return header_row = end_row+1; 
+  return [header_row,end_row] =end_row+1;
 }
+
+
 
 
