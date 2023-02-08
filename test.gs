@@ -1,89 +1,160 @@
-function sortImports(data, dictionary, sheet_row) {
-  var header_row = sheet_row - 1;
-  var flat_dictionary = [].concat.apply([], Object.values(dictionary));
+// Get the Google Sheet
+var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Import");
 
+// Get the data in the sheet
+var data = sheet.getDataRange().getValues();
+
+// Declare the preset list of equivalent terms for each property
+var dictionary = {
+"Exercise": ["Exercise"],
+"Device": ["Device", "Equipment","Apparatus"],
+"Set": ["Set"],
+"Completed": ["Completed", "Checkbox"],
+"Weight": ["Weight"],
+"Unit": ["Unit"],
+"Load": ["Load", "Loading"],
+"Reps": ["Reps", "Repetitions"],
+"Rest": ["Rest", "Rest (min)"],
+"Energy": ["Energy"],
+"Loaded-Stretch": ["Loaded-Stretch"],
+"RPE": ["RPE", "Intensity"],
+"RoM [M|m]": ["RoM [M|m]", "Form"],
+"Cadence": ["Cadence"],
+"Program": ["Program", "Programming"],
+"Notes": ["Notes"],
+"Peak HR": ["Peak HR", "Peak Heart Rate"],
+"Trough HR": ["Trough HR", "Trough Heart Rate"],
+"Date": ["Created", "Date", "Created Time", "Property"],
+"Last Edited Time": ["Last Edited Time", "Last Edited"]
+};
+
+var sheet_row = 1;
+var last_row = sheet.getLastRow();
+console.log("last_row: ", last_row);
+
+
+while (sheet_row < last_row ) {
+  sheet_row = sortImports(data, dictionary, sheet_row);
+}
+
+function removeHeaders() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sorting");
+  var data = sheet.getDataRange().getValues();
+  var numDeleted = 0;
+  // Remove headers
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].trim() == "Exercise") {
+      sheet.deleteRow(i + 1 - numDeleted);
+      numDeleted++;
+      console.log("data[i][0]: ",data[i][0]);
+      console.log("Deleted row: ", i + 1);
+    }
+  }
+}
+
+removeHeaders();
+
+
+function sortImports(data,dictionary,sheet_row) {
+
+  var header_row = sheet_row-1;
+  // flattening to facillitate easier iteration over all the values
+  var flat_dictionary = [].concat.apply([], Object.values(dictionary));
+  console.log(flat_dictionary);
+
+  // Function to find the end_row number of an import "block"
   function findEndRow(data, header_row) {
     let end_row = -1;
     for (var i = header_row + 1; i < data.length; i++) {
       if (data[i][0].trim() == "Exercise") {
         end_row = i; 
         break;
+      } else {
+        end_row = last_row;
       }
     }
+    
     return end_row;
   }
-
+  
   let end_row = findEndRow(data, header_row);
+  console.log("header_row: ",header_row);
+  console.log("end_row: ",end_row);
 
+  // Contains all the values of the row designated a header
   var header = data[header_row];
+  console.log("header: ",header);
   var block = [];
-  block.push(header);
-  for (var i = header_row + 1; i < end_row; i++) {
+  console.log("block: ",block);
+  // Push header and then all the rows from header_row to end_row into block
+  block.push(header)
+  for (var i = header_row+1; i < end_row; i++) {
     block.push(data[i]);
   }
+  console.log("block: ", block);
   
   var position_array = getHeaderPositions(header, flat_dictionary, dictionary);
-
+  console.log("position_array: ", position_array);
+  
+  // This function will interpret the header of a "block" and after processing will generate an array of numbers (or "" if no match found)
+  // This array of numbers represents how the header needs to be rearranged to fit the desired scheme set by dictionary.
   function getHeaderPositions(header, flat_dictionary, dictionary) {
     let position_array = [];
     header.forEach(function(term) {
       var term = term.trim().toLowerCase();
       var term_index = flat_dictionary.map(function(x) { return x.toLowerCase(); }).indexOf(term);
+      console.log("Term_Index of '" + term + "' in flat_dictionary: " + term_index);
+
       if (term_index !== -1) {
         for (var key in dictionary) {
           if (term_index < dictionary[key].length) {
-            position_array[dictionary[key][term_index]] = term;
+            var key_index = Object.keys(dictionary).indexOf(key);
+            position_array = position_array.concat(key_index);
+            console.log("Index of key in dictionary: ", key_index);
             break;
+          } else {
+            term_index -= dictionary[key].length;
           }
         }
       } else {
         position_array.push("");
       }
+      console.log("position_array: ", position_array);
     });
     return position_array;
   }
 
-  let rearranged_header = [];
-  for (var i = 0; i < position_array.length; i++) {
-    if (position_array[i] !== undefined) {
-      rearranged_header.push(position_array[i]);
-    }
-  }
-
-  let rearranged_block = [rearranged_header];
-  for (var i = 0; i < block.length - 1; i++) {
-    let rearranged_row = [];
-    for (var j = 0; j < position_array.length; j++) {
-      if (position_array[j] !== undefined) {
-        let header_index = header.indexOf(position_array[j]);
-        rearranged_row.push(block[i + 1][header_index]);
+  // This function will rearrange the elements of each inner array of the block array according to the position_array
+  function rearrangeBlockArray(block, position_array) {
+    function rearrangeContentArray(positional_array, content_array) {
+      var clean_array = [];
+      for (var i = 0; i < content_array.length; i++) {
+        var position = positional_array[i];
+        clean_array[position] = content_array[i];
       }
+        return clean_array;
     }
-    rearranged_block.push(rearranged_row);
+    var clean_block = [];
+    for (var i = 0; i < block.length; i++) {
+      var header = block[i];
+      var clean_array = rearrangeContentArray(position_array, header);
+      clean_block.push(clean_array);
+    }
+    return clean_block;
   }
 
-  var output_sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet3");
-  for (var i = 0; i < rearranged_block.length; i++) {
-    output_sheet.getRange(output_sheet.getLastRow() + 1, 1, 1, rearranged_block[i].length).setValues([rearranged_block[i]]);
-  }
+  var rearranged_block = rearrangeBlockArray(block, position_array);
+  console.log("Rearranged block: ", rearranged_block);
 
-  return [end_row + 1, findEndRow(data, end_row)];
+  var num_rows = (end_row-header_row); // 9
+  var dict_length = Object.keys(dictionary).length; 
+  console.log("num_rows: ",num_rows);
+ 
+  var spreadsheet = SpreadsheetApp.getActive();
+  var sheet = spreadsheet.getSheetByName("Sorting");
+  sheet.getRange(header_row+1, 1, num_rows, 19).setValues(rearranged_block);
+
+  return header_row = end_row+1;
 }
 
-function removeHeaders() {
-  var sheet = SpreadsheetApp.getActiveSheet();
-  var lastRow = sheet.getLastRow();
-  var lastColumn = sheet.getLastColumn();
-  var data = sheet.getRange(2, 1, lastRow-1, lastColumn).getValues();
-  var headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
-  var newData = [];
-  for (var i = 0; i < data.length; i++) {
-    var newRow = {};
-    for (var j = 0; j < headers.length; j++) {
-      newRow[headers[j]] = data[i][j];
-      }
-      newData.push(newRow);
-    }
-  sheet.clearContents();
-  sheet.getRange(1, 1, newData.length, headers.length).setValues(newData);
-}
+
