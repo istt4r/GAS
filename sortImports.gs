@@ -1,48 +1,52 @@
 import 'google-apps-script'
 
+// Get the Google Sheet
+var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet2");
 
-function sortImports() {
-  
-  // Get the Google Sheet
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet2");
+// Get the data in the sheet
+var data = sheet.getDataRange().getValues();
 
-  // Get the data in the sheet
-  var data = sheet.getDataRange().getValues();
-  
-  // Declare the preset list of equivalent terms for each property
-  var dictionary = {
-  "Exercise": ["Exercise"],
-  "Device": ["Device", "Equipment","Apparatus"],
-  "Set": ["Set"],
-  "Completed": ["Completed", "Checkbox"],
-  "Weight": ["Weight"],
-  "Unit": ["Unit"],
-  "Load": ["Load", "Loading"],
-  "Reps": ["Reps", "Repetitions"],
-  "Rest": ["Rest"],
-  "Energy": ["Energy"],
-  "Loaded-Stretch": ["Loaded-Stretch"],
-  "RPE": ["RPE", "Intensity"],
-  "RoM [M|m]": ["RoM [M|m]", "Form"],
-  "Cadence": ["Cadence"],
-  "Program": ["Program", "Programming"],
-  "Notes": ["Notes"],
-  "Peak HR": ["Peak HR", "Peak Heart Rate"],
-  "Trough HR": ["Trough HR", "Trough Heart Rate"],
-  "Date": ["Created", "Date"],
-  "Last Edited Time": ["Last Edited Time"]
-  };
+// Declare the preset list of equivalent terms for each property
+var dictionary = {
+"Exercise": ["Exercise"],
+"Device": ["Device", "Equipment","Apparatus"],
+"Set": ["Set"],
+"Completed": ["Completed", "Checkbox"],
+"Weight": ["Weight"],
+"Unit": ["Unit"],
+"Load": ["Load", "Loading"],
+"Reps": ["Reps", "Repetitions"],
+"Rest": ["Rest", "Rest (min)"],
+"Energy": ["Energy"],
+"Loaded-Stretch": ["Loaded-Stretch"],
+"RPE": ["RPE", "Intensity"],
+"RoM [M|m]": ["RoM [M|m]", "Form"],
+"Cadence": ["Cadence"],
+"Program": ["Program", "Programming"],
+"Notes": ["Notes"],
+"Peak HR": ["Peak HR", "Peak Heart Rate"],
+"Trough HR": ["Trough HR", "Trough Heart Rate"],
+"Date": ["Created", "Date", "Created Time", "Property"],
+"Last Edited Time": ["Last Edited Time", "Last Edited"]
+};
 
+var sheet_row = 1;
+
+while (sheet_row < data.length) {
+  sheet_row = sortImports(data, dictionary, sheet_row);
+}
+
+function sortImports(data,dictionary,sheet_row) {
+
+  var header_row = sheet_row-1;
   // flattening to facillitate easier iteration over all the values
   var flat_dictionary = [].concat.apply([], Object.values(dictionary));
   console.log(flat_dictionary);
 
-
-  var start_row = 1;
   // Function to find the end_row number of an import "block"
-  function findEndRow(data, start_row) {
+  function findEndRow(data, header_row) {
     let end_row = -1;
-    for (var i = start_row + 1; i < data.length; i++) {
+    for (var i = header_row + 1; i < data.length; i++) {
       if (data[i][0].trim() == "Exercise") {
         end_row = i; 
         break;
@@ -52,24 +56,22 @@ function sortImports() {
     return end_row;
   }
   
-  // TODO - encapulate in loop to process all of data.length
-  let end_row = findEndRow(data, start_row);
-  console.log("start_row: ",start_row);
+  let end_row = findEndRow(data, header_row);
+  console.log("header_row: ",header_row);
   console.log("end_row: ",end_row);
 
   // Contains all the values of the row designated a header
-  var header = data[start_row];
+  var header = data[header_row];
   console.log("header: ",header);
   var block = [];
   console.log("block: ",block);
-  // Push header and then all the rows from start_row to end_row into block
+  // Push header and then all the rows from header_row to end_row into block
   block.push(header)
-  for (var i = start_row+1; i < end_row; i++) {
+  for (var i = header_row+1; i < end_row; i++) {
     block.push(data[i]);
   }
   console.log("block: ", block);
   
-    
   var position_array = getHeaderPositions(header, flat_dictionary, dictionary);
   console.log("position_array: ", position_array);
   
@@ -78,7 +80,8 @@ function sortImports() {
   function getHeaderPositions(header, flat_dictionary, dictionary) {
     let position_array = [];
     header.forEach(function(term) {
-      var term_index = flat_dictionary.indexOf(term);
+      var term = term.trim().toLowerCase();
+      var term_index = flat_dictionary.map(function(x) { return x.toLowerCase(); }).indexOf(term);
       console.log("Term_Index of '" + term + "' in flat_dictionary: " + term_index);
 
       if (term_index !== -1) {
@@ -122,13 +125,18 @@ function sortImports() {
   var rearranged_block = rearrangeBlockArray(block, position_array);
   console.log("Rearranged block: ", rearranged_block);
 
+  var num_rows = (end_row-header_row); // 9
+  var dict_length = Object.keys(dictionary).length; 
+  console.log("num_rows: ",num_rows);
+  console.log("dict_length: ",dict_length);
+
   // Writing the results to sheet3 for debugging purposes
+  // TODO - Fix hardcoding of writing. 
   var spreadsheet = SpreadsheetApp.getActive();
   var sheet = spreadsheet.getSheetByName("Sheet3");
-  for (var i = 0; i < rearranged_block.length; i++) {
-    var row = rearranged_block[i];
-    sheet.getRange(2, 1, 1, row.length).setValues([row]);
-  }
+  sheet.getRange(header_row+1, 1, num_rows, 19).setValues(rearranged_block);
+
+  return header_row = end_row+1; 
 }
 
 
