@@ -1,5 +1,5 @@
 // Get the Google Sheet
-var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet2");
+var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Import");
 
 // Get the data in the sheet
 var data = sheet.getDataRange().getValues();
@@ -28,22 +28,20 @@ var dictionary = {
 "Last Edited Time": ["Last Edited Time", "Last Edited"]
 };
 
-// Flattening dictionary to facillitate easier iteration over all the values
-var flat_dictionary = [].concat.apply([], Object.values(dictionary));
-
 var sheet_row = 1;
-var end_row;
+var last_row = sheet.getLastRow();
+console.log("last_row: ", last_row);
 
-// Loop to run sorting function for all blocks of data
-while (end_row > 0 ) {
-  [sheet_row,end_row] = sortImports(data, flat_dictionary, sheet_row);
+
+while (sheet_row < last_row ) {
+  sheet_row = sortImports(data, dictionary, sheet_row);
 }
 
-// Removing headers after sorting (TODO: should instead not push the header into rearranged block) 
 function removeHeaders() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet3");
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sorting");
   var data = sheet.getDataRange().getValues();
   var numDeleted = 0;
+  // Remove headers
   for (var i = 1; i < data.length; i++) {
     if (data[i][0].trim() == "Exercise") {
       sheet.deleteRow(i + 1 - numDeleted);
@@ -53,11 +51,16 @@ function removeHeaders() {
     }
   }
 }
+
 removeHeaders();
 
 
-function sortImports(data,flat_dictionary,sheet_row) {
+function sortImports(data,dictionary,sheet_row) {
+
   var header_row = sheet_row-1;
+  // flattening to facillitate easier iteration over all the values
+  var flat_dictionary = [].concat.apply([], Object.values(dictionary));
+  console.log(flat_dictionary);
 
   // Function to find the end_row number of an import "block"
   function findEndRow(data, header_row) {
@@ -66,8 +69,11 @@ function sortImports(data,flat_dictionary,sheet_row) {
       if (data[i][0].trim() == "Exercise") {
         end_row = i; 
         break;
+      } else {
+        end_row = last_row;
       }
     }
+    
     return end_row;
   }
   
@@ -80,7 +86,7 @@ function sortImports(data,flat_dictionary,sheet_row) {
   console.log("header: ",header);
   var block = [];
   console.log("block: ",block);
-  // Push header and then all the rows from header_row to end_row into a "block" of arrays for a "bulk sort"
+  // Push header and then all the rows from header_row to end_row into block
   block.push(header)
   for (var i = header_row+1; i < end_row; i++) {
     block.push(data[i]);
@@ -90,8 +96,8 @@ function sortImports(data,flat_dictionary,sheet_row) {
   var position_array = getHeaderPositions(header, flat_dictionary, dictionary);
   console.log("position_array: ", position_array);
   
-  // Interpret the header of a "block" and after processing, will generate an array of numbers (or "" if no match found)
-  // Array of numbers represents how the header needs to be rearranged to fit the desired scheme set by dictionary.
+  // This function will interpret the header of a "block" and after processing will generate an array of numbers (or "" if no match found)
+  // This array of numbers represents how the header needs to be rearranged to fit the desired scheme set by dictionary.
   function getHeaderPositions(header, flat_dictionary, dictionary) {
     let position_array = [];
     header.forEach(function(term) {
@@ -140,17 +146,15 @@ function sortImports(data,flat_dictionary,sheet_row) {
   var rearranged_block = rearrangeBlockArray(block, position_array);
   console.log("Rearranged block: ", rearranged_block);
 
-  var num_rows = (end_row-header_row);
+  var num_rows = (end_row-header_row); // 9
   var dict_length = Object.keys(dictionary).length; 
   console.log("num_rows: ",num_rows);
  
   var spreadsheet = SpreadsheetApp.getActive();
-  var sheet = spreadsheet.getSheetByName("Sheet3");
+  var sheet = spreadsheet.getSheetByName("Sorting");
   sheet.getRange(header_row+1, 1, num_rows, 19).setValues(rearranged_block);
 
-  return [header_row,end_row] =end_row+1;
+  return header_row = end_row+1;
 }
-
-
 
 
