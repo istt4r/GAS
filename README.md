@@ -1,6 +1,6 @@
 <h1>Google App Scripts</h1>
 
-This repository is the storatge of a collection of scripts that I have used in the processing of my notion google sheets itself.
+This repository is a collection of scripts that I have used in the processing of my notion google sheets itself.
 
 <b>Demo viewable at:</b> https://docs.google.com/spreadsheets/d/1ViopvzfCvcuMv_1Ps0EqNGq_oKcRmZjA-HzWX9F42ik/edit#gid=1188826729
 
